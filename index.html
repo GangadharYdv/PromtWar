@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseGrid — Centralized Citywide Emergency ICU & Life-Support Network</title>
+    <meta name="description" content="Real-time centralized grid connecting patients, emergency responders, and hospitals for immediate ICU bed, ventilator, and life-support equipment availability.">
+    <meta name="keywords" content="ICU Bed Availability, Ventilator Tracker, Medical Emergency, Hospital Resource Network, Life Support Finder">
+    <meta name="theme-color" content="#0b1329">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+
+    <!-- Top Navigation Bar -->
+    <header class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <img src="assets/logo.jpg" alt="PulseGrid Logo" class="brand-logo">
+                <div class="brand-text">
+                    <span class="brand-title">PULSE<span class="highlight">GRID</span></span>
+                    <span class="brand-subtitle">EMERGENCY ICU & LIFE-SUPPORT NETWORK</span>
+                </div>
+            </div>
+
+            <!-- Live Status Ticker -->
+            <div class="live-status-pill" id="liveStatusPill">
+                <span class="pulse-beacon"></span>
+                <span class="status-text"><strong id="totalAvailableBedsCount">--</strong> ICU Beds & <strong id="totalVentsCount">--</strong> Vents Available Citywide</span>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="nav-links">
+                <button class="nav-btn active" data-tab="finder"><i class="fa-solid fa-truck-medical"></i> Emergency Finder</button>
+                <button class="nav-btn" data-tab="map-view"><i class="fa-solid fa-map-location-dot"></i> Live City Map</button>
+                <button class="nav-btn" data-tab="triage"><i class="fa-solid fa-user-nurse"></i> Smart AI Triage</button>
+                <button class="nav-btn" data-tab="hospital-portal"><i class="fa-solid fa-hospital-user"></i> Hospital Broadcast Portal</button>
+                <button class="nav-btn" data-tab="command-center"><i class="fa-solid fa-chart-line"></i> City Command Center</button>
+            </nav>
+
+            <!-- Actions -->
+            <div class="nav-actions">
+                <button class="btn btn-sos pulse-anim" id="btnSOS"><i class="fa-solid fa-triangle-exclamation"></i> SOS 1-TAP</button>
+                <button class="btn btn-icon" id="btnSimulateSurge" title="Simulate Emergency Surge / Incident"><i class="fa-solid fa-bolt"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Emergency Announcement Banner -->
+    <div class="alert-banner" id="alertBanner">
+        <div class="alert-banner-content">
+            <i class="fa-solid fa-circle-exclamation alert-icon"></i>
+            <span id="alertBannerText">REAL-TIME GRID ACTIVE: Hospitals broadcasting live ICU, Ventilator, ECMO, and Oxygen tank updates every 15 seconds.</span>
+            <button class="alert-close" id="btnCloseBanner"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <main class="main-content">
+
+        <!-- TAB 1: EMERGENCY FINDER (PUBLIC & RESPONDER VIEW) -->
+        <section class="tab-pane active" id="pane-finder">
+            
+            <!-- Hero Search Header -->
+            <div class="hero-card">
+                <div class="hero-overlay"></div>
+                <div class="hero-content">
+                    <div class="hero-badge"><i class="fa-solid fa-shield-heart"></i> Instant ICU & Equipment Availability Broadcast</div>
+                    <h1>Locate Emergency Life-Support in Seconds</h1>
+                    <p>Centralized real-time coordination for patients, paramedics, and hospitals to bypass delays during critical medical emergencies.</p>
+                    
+                    <!-- Search & Filter Controls -->
+                    <div class="search-bar-box">
+                        <div class="search-field">
+                            <i class="fa-solid fa-location-dot"></i>
+                            <select id="selectDistrict" class="search-input">
+                                <option value="all">All City Zones & Districts</option>
+                                <option value="Central Downtown">Central Downtown</option>
+                                <option value="North Medical Hub">North Medical Hub</option>
+                                <option value="South Suburbs">South Suburbs</option>
+                                <option value="East Tech City">East Tech City</option>
+                                <option value="West Outer Hub">West Outer Hub</option>
+                            </select>
+                        </div>
+                        <div class="search-field">
+                            <i class="fa-solid fa-bed-pulse"></i>
+                            <select id="selectBedType" class="search-input">
+                                <option value="all">All Equipment / Beds Required</option>
+                                <option value="adult_icu">Adult ICU Bed (Invasive Vent Ready)</option>
+                                <option value="picu">Pediatric ICU (PICU)</option>
+                                <option value="nicu">Neonatal ICU (NICU / Incubator)</option>
+                                <option value="ecmo">ECMO (Extracorporeal Membrane Oxygenation)</option>
+                                <option value="isolation">Negative Pressure Isolation Pod</option>
+                                <option value="dialysis">Emergency Dialysis ICU</option>
+                            </select>
+                        </div>
+                        <div class="search-field">
+                            <i class="fa-solid fa-heart-pulse"></i>
+                            <select id="selectBloodGroup" class="search-input">
+                                <option value="all">Blood Reserves (Any)</option>
+                                <option value="O_NEG">O Negative (Universal)</option>
+                                <option value="A_POS">A Positive</option>
+                                <option value="B_POS">B Positive</option>
+                                <option value="AB_POS">AB Positive</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary btn-search" id="btnApplySearch">
+                            <i class="fa-solid fa-magnifying-glass"></i> Find Available Units
+                        </button>
+                    </div>
+
+                    <!-- Quick Filter Chips -->
+                    <div class="quick-chips">
+                        <span class="chip-label">Quick Filter:</span>
+                        <button class="chip active" data-filter="all">All Available</button>
+                        <button class="chip" data-filter="vent_available"><i class="fa-solid fa-wind"></i> Ventilator Ready (>2)</button>
+                        <button class="chip" data-filter="ecmo_ready"><i class="fa-solid fa-heart-circle-bolt"></i> ECMO Unit Available</button>
+                        <button class="chip" data-filter="high_o2"><i class="fa-solid fa-bottle-droplet"></i> High O2 Storage (>80%)</button>
+                        <button class="chip" data-filter="trauma_ready"><i class="fa-solid fa-kit-medical"></i> Level 1 Trauma Center</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section Grid -->
+            <div class="results-header">
+                <h2><i class="fa-solid fa-hospital"></i> Available Medical Centers (<span id="resultsCount">0</span>)</h2>
+                <div class="view-controls">
+                    <span class="sort-label">Sort by:</span>
+                    <select id="selectSort" class="select-sm">
+                        <option value="distance">Nearest Distance / ETA</option>
+                        <option value="icu_desc">Highest Available ICU Beds</option>
+                        <option value="vent_desc">Highest Available Ventilators</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Hospital Cards Grid -->
+            <div class="hospital-grid" id="hospitalGrid">
+                <!-- Dynamically populated by JS -->
+            </div>
+        </section>
+
+        <!-- TAB 2: LIVE CITY INTERACTIVE MAP VIEW -->
+        <section class="tab-pane" id="pane-map-view">
+            <div class="map-layout">
+                <div class="map-sidebar">
+                    <div class="sidebar-header">
+                        <h3><i class="fa-solid fa-map-pin"></i> Live Grid Telemetry</h3>
+                        <p class="text-muted">Color-coded real-time bed capacity</p>
+                    </div>
+                    <div class="map-legend">
+                        <div class="legend-item"><span class="dot dot-green"></span> <strong>Green:</strong> >5 ICU Beds / High Capacity</div>
+                        <div class="legend-item"><span class="dot dot-amber"></span> <strong>Amber:</strong> 1-4 ICU Beds / Limited</div>
+                        <div class="legend-item"><span class="dot dot-red"></span> <strong>Red:</strong> 0 Beds / Critical Overload</div>
+                    </div>
+                    <div class="hospital-mini-list" id="mapHospitalList">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                <div class="map-wrapper">
+                    <div id="leafletMap" class="leaflet-container-custom"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: SMART AI TRIAGE & EQUIPMENT MATCH -->
+        <section class="tab-pane" id="pane-triage">
+            <div class="triage-card">
+                <div class="triage-header">
+                    <div class="triage-icon"><i class="fa-solid fa-brain-circuit"></i></div>
+                    <div>
+                        <h2>Emergency Triage & Equipment Match Assistant</h2>
+                        <p>Answer 3 quick triage questions to identify the exact hospital equipped for immediate patient intake.</p>
+                    </div>
+                </div>
+
+                <div class="triage-body" id="triageWizard">
+                    <!-- Step 1 -->
+                    <div class="wizard-step active" id="step-1">
+                        <h3>Step 1: What is the primary medical condition?</h3>
+                        <div class="triage-options">
+                            <label class="triage-option">
+                                <input type="radio" name="condition" value="respiratory_failure">
+                                <div class="option-box">
+                                    <i class="fa-solid fa-lungs"></i>
+                                    <strong>Severe Respiratory Failure / ARDS</strong>
+                                    <span>Requires Invasive Ventilator / High-Flow Oxygen</span>
+                                </div>
+                            </label>
+                            <label class="triage-option">
+                                <input type="radio" name="condition" value="cardiac_arrest">
+                                <div class="option-box">
+                                    <i class="fa-solid fa-heart-pulse"></i>
+                                    <strong>Acute Cardiac / Cardiogenic Shock</strong>
+                                    <span>Requires Cardiac ICU + ECMO Backup</span>
+                                </div>
+                            </label>
+                            <label class="triage-option">
+                                <input type="radio" name="condition" value="polytrauma">
+                                <div class="option-box">
+                                    <i class="fa-solid fa-user-ninja"></i>
+                                    <strong>Severe Polytrauma / Head Injury</strong>
+                                    <span>Requires Level 1 Trauma + Neurosurgeon Standby</span>
+                                </div>
+                            </label>
+                            <label class="triage-option">
+                                <input type="radio" name="condition" value="pediatric_crisis">
+                                <div class="option-box">
+                                    <i class="fa-solid fa-baby"></i>
+                                    <strong>Pediatric / Neonatal Emergency</strong>
+                                    <span>Requires PICU / NICU Incubator</span>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="wizard-actions">
+                            <button class="btn btn-primary btn-next-step" data-next="2">Next Step <i class="fa-solid fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="wizard-step" id="step-2">
+                        <h3>Step 2: Key Equipment & Vital Standby Needed</h3>
+                        <div class="triage-options">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="chkVent" checked>
+                                <span>Invasive Ventilator</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="chkECMO">
+                                <span>ECMO Support Machine</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="chkDialysis">
+                                <span>Emergency Dialysis CRRT</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="chkBloodTransfusion">
+                                <span>Urgent Blood Transfusion</span>
+                            </label>
+                        </div>
+                        <div class="wizard-actions">
+                            <button class="btn btn-secondary btn-prev-step" data-prev="1"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                            <button class="btn btn-primary btn-next-step" data-next="3">Match Hospitals <i class="fa-solid fa-wand-magic-sparkles"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Result -->
+                    <div class="wizard-step" id="step-3">
+                        <div class="triage-recommendation" id="triageResultBox">
+                            <!-- Filled dynamically -->
+                        </div>
+                        <div class="wizard-actions">
+                            <button class="btn btn-secondary btn-prev-step" data-prev="1"><i class="fa-solid fa-rotate-left"></i> Start Over</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: HOSPITAL BROADCAST & RESOURCE MANAGEMENT PORTAL -->
+        <section class="tab-pane" id="pane-hospital-portal">
+            <div class="portal-card">
+                <div class="portal-header">
+                    <div class="portal-selector">
+                        <i class="fa-solid fa-hospital-user"></i>
+                        <label for="selectHospitalPortal">Select Operating Hospital Portal:</label>
+                        <select id="selectHospitalPortal" class="search-input">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="live-sync-tag">
+                        <span class="pulse-beacon green"></span> Live Central Broadcast Active
+                    </div>
+                </div>
+
+                <div class="portal-body" id="portalControlBody">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: CITY COMMAND CENTER & ANALYTICS -->
+        <section class="tab-pane" id="pane-command-center">
+            <div class="command-grid">
+                
+                <!-- Stat Cards Row -->
+                <div class="stat-card">
+                    <div class="stat-icon cyan"><i class="fa-solid fa-hospital"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statTotalHospitals">0</span>
+                        <span class="stat-label">Connected Hospitals</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="fa-solid fa-bed-pulse"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statAvailableICU">0</span>
+                        <span class="stat-label">Available ICU Beds</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fa-solid fa-wind"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statAvailableVents">0</span>
+                        <span class="stat-label">Available Ventilators</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statCriticalAlerts">0</span>
+                        <span class="stat-label">Critical Capacity Warnings</span>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="chart-card span-2">
+                    <div class="chart-header">
+                        <h3><i class="fa-solid fa-chart-line"></i> Citywide ICU & Ventilator Occupancy Trend (24 Hours)</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chartOccupancyTrend"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fa-solid fa-chart-pie"></i> Critical Equipment Availability</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chartEquipmentDistribution"></canvas>
+                    </div>
+                </div>
+
+                <!-- Real-Time Activity Log -->
+                <div class="chart-card span-3">
+                    <div class="chart-header">
+                        <h3><i class="fa-solid fa-list-check"></i> Real-Time Network Broadcast Log</h3>
+                        <button class="btn btn-sm btn-secondary" id="btnClearLog">Clear Log</button>
+                    </div>
+                    <div class="log-table-container">
+                        <table class="log-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Medical Center</th>
+                                    <th>Event / Broadcast Type</th>
+                                    <th>Change Details</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="networkLogTableBody">
+                                <!-- Log rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- EMERGENCY LOCK / BOOKING MODAL -->
+    <div class="modal-overlay" id="bookingModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-shield-halved"></i> 15-Minute Emergency Resource Lock</h3>
+                <button class="modal-close" id="btnCloseModal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Dynamic Content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- SOS FAST DISPATCH MODAL -->
+    <div class="modal-overlay" id="sosModal">
+        <div class="modal-content modal-sos">
+            <div class="modal-header header-red">
+                <h3><i class="fa-solid fa-triangle-exclamation"></i> SOS 1-TAP CRITICAL DISPATCH</h3>
+                <button class="modal-close" id="btnCloseSOSModal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" id="sosModalBody">
+                <div class="sos-prompt">
+                    <p class="sos-alert-text">Auto-scanning city grid for nearest hospital with immediate Adult/Pediatric ICU & Ventilator availability...</p>
+                    <div class="sos-loader"><div class="radar-sweep"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- QRCode Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Custom Application JS -->
+    <script src="app.js"></script>
+</body>
+</html>
